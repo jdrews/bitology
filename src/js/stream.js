@@ -6,10 +6,11 @@
 
         // websocket connection object
         connection: null,
+        forceClose: false,
 
         // graph objects
         graph: null,
-        line: null,
+        area: null,
         data: [],
 
         // graph parameters
@@ -19,24 +20,31 @@
         interpolation: "basis",
         x: null,
         y: null,
+        yAxis: null,
 
         init: function () {
+            this.forceClose = false;
             this.buildGraph();
             this.createwebsocket();
         },
         createwebsocket: function () {
+
             this.connection = new WebSocket(this.url);
             this.connection.onopen = this.onopen;
             this.connection.onclose = this.onclose;
             this.connection.onerror = this.onerror;
             this.connection.onmessage = this.onmessage;
         },
+        closestream: function () {
+            this.forceClose = true;
+            this.connection.close()
+        },
         onopen: function () {
             console.log('Websocket connected');
 
             clearInterval(window.ping_websocket_server);
             window.ping_websocket_server = setInterval(function () {
-                if (bitology.connection.bufferedAmount == 0)
+                if (bitology.connection.bufferedAmount == 0 && bitology.forceClose == false)
                     bitology.connection.send("Keep alive from client");
             }, 30000);
 
@@ -45,7 +53,12 @@
         },
         onclose: function () {
             console.log('Websocket connection closed');
-            bitology.reconnectwebsocket();
+            if (this.forceClose != true) {
+                bitology.reconnectwebsocket();
+            } else {
+                console.log("user forced the websocket to close, not reopening...")
+            }
+
         },
         onerror: function (error) {
             console.log('Websocket error detected');
@@ -63,9 +76,11 @@
         },
         reconnectwebsocket: function () {
             setTimeout(function () {
-                // Connection has closed so try to reconnect every 5 seconds.
-                console.log('Trying to reconnect websocket...');
-                bitology.createwebsocket();
+                if (bitology.forceClose == false) {
+                    // Connection has closed so try to reconnect every 5 seconds.
+                    console.log('Trying to reconnect websocket...');
+                    bitology.createwebsocket();
+                }
             }, 5 * 1000);
         },
         onblock: function (obj) {
@@ -92,45 +107,87 @@
             if (bitology.data.length >= 50) {
                 bitology.data.shift(); // remove the first element of the array
             }
+            // update data
             bitology.data.push(parseFloat(context.amount));
-            bitology.y = d3.scale.linear().domain([d3.min(bitology.data), d3.max(bitology.data)]).range([0,bitology.height]);
+
+            // rebuild y axis based on new data ranges
+            bitology.y = d3.scale.linear().domain([d3.min(bitology.data), d3.max(bitology.data)]).range([bitology.height, 0]);
+
+            // rebuild y axis
+            bitology.yAxis = d3.svg.axis()
+                .scale(bitology.y)
+                .orient("left");
 
             this.redrawGraph();
             console.log(JSON.stringify(bitology.data))
 
         },
         redrawGraph: function () {
-            // create a line object that represents the SVN line we're creating
-            bitology.line = d3.svg.line()
+            // create a area object that represents the SVN area we're creating
+            bitology.area = d3.svg.area()
                 .x(function (d, i) {return bitology.x(i);})
-                .y(function (d) {return bitology.y(d);})
+                .y0(bitology.height)
+                .y1(function (d) {return bitology.y(d);})
                 .interpolate(bitology.interpolation);
 
-            // static update without animation
+            // update graph data
             bitology.graph.selectAll("path")
                 .data([bitology.data]) // set the new data
-                .attr("d", bitology.line); // apply the new data values
+                .attr("d", bitology.area); // apply the new data values
+
+            // reapply yAxis
+            bitology.graph.selectAll("g .y.axis")
+                .call(bitology.yAxis)
         },
         buildGraph: function () {
+
+            var margin = {top: 20, right: 20, bottom: 30, left: 50};
+            bitology.width = bitology.width - margin.left - margin.right;
+            bitology.height = bitology.height - margin.top - margin.bottom;
+
+            bitology.graph = d3.select(bitology.id).append("svg")
+                    .attr("width", bitology.width + margin.left + margin.right)
+                    .attr("height", bitology.height + margin.top + margin.bottom)
+                .append("g")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
             // create an SVG element inside the #graph div that fills 100% of the div
-            bitology.graph = d3.select(bitology.id).append("svg:svg").attr("width", "100%").attr("height", "100%");
+            //bitology.graph = d3.select(bitology.id).append("svg:svg").attr("width", "100%").attr("height", "100%");
 
             // X scale will fit values from 0-48 within pixels 0-100
             bitology.x = d3.scale.linear().domain([0, 48]).range([-5, bitology.width]); // starting point is -5 so the first value doesn't show and slides off the edge as part of the transition
 
-            // Build y scale to fit data (rescale with new data on update (in redraw function)
-            bitology.y = d3.scale.linear().domain([d3.min(bitology.data), d3.max(bitology.data)]).range([0,bitology.height]);
+            // Build y scale to fit data (rescale with new data on update in redrawGraph function)
+            bitology.y = d3.scale.linear().domain([d3.min(bitology.data), d3.max(bitology.data)]).range([bitology.height, 0]);
 
-            // create a line object that represents the SVN line we're creating
-            bitology.line = d3.svg.line()
+            // create a area object that represents the SVN area we're creating
+            bitology.area = d3.svg.area()
                 .x(function (d, i) {return bitology.x(i);})
-                .y(function (d) {return bitology.y(d);})
+                .y0(bitology.height)
+                .y1(function (d) {return bitology.y(d);})
                 .interpolate(bitology.interpolation);
 
-            // display the line by appending an svg:path element with the data line we created above
-            bitology.graph.append("svg:path").attr("d", bitology.line(bitology.data));
+            bitology.yAxis = d3.svg.axis()
+                .scale(bitology.y)
+                .orient("left");
+
+            // display the area by appending an svg:path element with the data area we created above
+            bitology.graph.append("path")
+                .attr("d", bitology.area(bitology.data))
+                .attr("class", "area")
+
+            bitology.graph.append("g")
+                .attr("class", "y axis")
+                    .call(bitology.yAxis)
+                .append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", 6)
+                    .attr("dy", ".71em")
+                    .style("text-anchor", "end")
+                    .text("Amount (BTC)");
+
             // or it can be done like this
-            //graph.selectAll("path").data([data]).enter().append("svg:path").attr("d", bitology.line);
+            //graph.selectAll("path").data([data]).enter().append("svg:path").attr("d", bitology.area);
         }
     }
 }());

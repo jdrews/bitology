@@ -3,14 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <title>stream</title>
-    <script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
-    <script src="//momentjs.com/downloads/moment.min.js" charset="utf-8"></script>
+    <script src="js/d3.min.js" charset="utf-8"></script>
+    <script src="js/moment.min.js" charset="utf-8"></script>
+    <style>
+        /* tell the SVG path to be a thin blue line without any area fill */
+        /*path {*/
+            /*stroke: steelblue;*/
+            /*stroke-width: 1;*/
+            /*fill: none;*/
+        /*}*/
+        body {
+            font: 10px sans-serif;
+        }
+        .area {
+            fill: steelblue;
+        }
+        .axis line {
+            fill: none;
+            stroke: #000;
+            shape-rendering: crispEdges;
+        }
+    </style>
 </head>
 <body>
 <script src="js/stream.js" charset="utf-8" ></script>
-<button onclick="bitology.init();"> Begin Stream </button>
-<div id="transactions">Transactions: <br /></div>
-<div id="chart"></div>
+<button onclick="bitology.init();"> Begin Stream </button> <button onclick="bitology.closestream();"> Close Stream </button>
 <p>
 <div id="graph1" class="aGraph" style="width:1000px; height:400px;"></div>
 </p>
