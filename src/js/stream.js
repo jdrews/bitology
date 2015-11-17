@@ -15,8 +15,8 @@
 
         // graph parameters
         id: "#graph1",
-        width: 1000,
-        height: 400,
+        width: window.innerWidth-50,
+        height: window.innerHeight-50,
         interpolation: "basis",
         x: null,
         y: null,
@@ -119,7 +119,7 @@
                 .orient("left");
 
             this.redrawGraph();
-            console.log(JSON.stringify(bitology.data))
+            //console.log(JSON.stringify(bitology.data))
 
         },
         redrawGraph: function () {

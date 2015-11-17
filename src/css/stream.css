@@ -1,0 +1,30 @@
+/* tell the SVG path to be a thin blue line without any area fill */
+/*path {*/
+/*stroke: steelblue;*/
+/*stroke-width: 1;*/
+/*fill: none;*/
+/*}*/
+body {
+    font: 12px sans-serif;
+    color: #c5c5c5;
+    background: #000;
+}
+.header {
+    font: 16px sans-serif;
+    color: #c5c5c5;
+}
+.donate {
+    font: 10px sans-serif;
+    color: #7ec2c5;
+}
+.area {
+    fill: steelblue;
+}
+#graph1 > svg > g > g {
+    fill: #c5c5c5;
+    shape-rendering: crispEdges;
+}
+#graph1 > svg > g > g > path {
+    fill: #7c7c7c;
+    stroke-width: '3px';
+}
