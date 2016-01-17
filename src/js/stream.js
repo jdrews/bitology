@@ -12,6 +12,7 @@
         graph: null,
         area: null,
         data: [],
+        txData: [],
 
         // graph parameters
         id: "#graph1",
@@ -21,11 +22,17 @@
         x: null,
         y: null,
         yAxis: null,
+        xAxis: null,
+        xAxisTicks: [],
 
         init: function () {
             this.forceClose = false;
             this.buildGraph();
             this.createwebsocket();
+//            size=50
+//            while(size--) bitology.txData[size] = "";
+            size=50
+            while(size--) bitology.xAxisTicks[size] = size;
         },
         createwebsocket: function () {
 
@@ -66,13 +73,15 @@
         onmessage: function (e) {
             var obj = JSON.parse(e.data);
 
+            if (obj.subscription === 'transactions') {
+                        bitology.ontransaction(obj.data);
+            }
+
             if (obj.subscription === 'blocks') {
                 bitology.onblock(obj.data);
             }
 
-            if (obj.subscription === 'transactions') {
-                bitology.ontransaction(obj.data);
-            }
+
         },
         reconnectwebsocket: function () {
             setTimeout(function () {
@@ -106,9 +115,13 @@
             console.log('got transaction ' + JSON.stringify(context));
             if (bitology.data.length >= 50) {
                 bitology.data.shift(); // remove the first element of the array
+                bitology.txData.shift();
             }
-            // update data
+            // update data (stores tx amounts)
             bitology.data.push(parseFloat(context.amount));
+
+            // update txData (stores tx hash)
+            bitology.txData.push(context.hash)
 
             // rebuild y axis based on new data ranges
             bitology.y = d3.scale.linear().domain([d3.min(bitology.data), d3.max(bitology.data)]).range([bitology.height, 0]);
@@ -117,6 +130,14 @@
             bitology.yAxis = d3.svg.axis()
                 .scale(bitology.y)
                 .orient("left");
+
+            // rebuild x axis
+            bitology.xAxis = d3.svg.axis()
+                .scale(bitology.x)
+                .tickValues(bitology.xAxisTicks)
+                .tickFormat(function(d, i){
+                    return bitology.txData[d] //"Year1 Year2, etc depending on the tick value - 0,1,2,3,4"
+                });
 
             this.redrawGraph();
             //console.log(JSON.stringify(bitology.data))
@@ -138,10 +159,21 @@
             // reapply yAxis
             bitology.graph.selectAll("g .y.axis")
                 .call(bitology.yAxis)
+
+            // reapply xAxis
+            // TODO: Need to realign tx hash to area chart, it's off center
+            bitology.graph.selectAll("g .x.axis")
+                .call(bitology.xAxis)
+                .selectAll("text")
+                            .style("text-anchor", "end")
+                            .attr("transform", "rotate(-65)" )
+                            .on("click", function(d) {
+                                window.open("https://www.blocktrail.com/BTC/tx/"+bitology.txData[d]);
+                            });
         },
         buildGraph: function () {
 
-            var margin = {top: 20, right: 20, bottom: 30, left: 50};
+            var margin = {top: 20, right: 20, bottom: 70, left: 50};
             bitology.width = bitology.width - margin.left - margin.right;
             bitology.height = bitology.height - margin.top - margin.bottom;
 
@@ -171,6 +203,13 @@
                 .scale(bitology.y)
                 .orient("left");
 
+            bitology.xAxis = d3.svg.axis()
+                .scale(bitology.x)
+                .tickValues(bitology.xAxisTicks)
+                .tickFormat(function(d, i){
+                    return bitology.txData[d] //"Year1 Year2, etc depending on the tick value - 0,1,2,3,4"
+                });
+
             // display the area by appending an svg:path element with the data area we created above
             bitology.graph.append("path")
                 .attr("d", bitology.area(bitology.data))
@@ -186,8 +225,10 @@
                     .style("text-anchor", "end")
                     .text("Amount (BTC)");
 
-            // or it can be done like this
-            //graph.selectAll("path").data([data]).enter().append("svg:path").attr("d", bitology.area);
+            bitology.graph.append("g")
+                .attr("class", "x axis")
+                .attr("transform", "translate(0," + bitology.height + ")")
+                    .call(bitology.xAxis);
         }
     }
 }());
