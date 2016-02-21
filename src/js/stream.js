@@ -29,8 +29,6 @@
             this.forceClose = false;
             this.buildGraph();
             this.createwebsocket();
-//            size=50
-//            while(size--) bitology.txData[size] = "";
             size=50
             while(size--) bitology.xAxisTicks[size] = size;
         },
@@ -136,7 +134,7 @@
                 .scale(bitology.x)
                 .tickValues(bitology.xAxisTicks)
                 .tickFormat(function(d, i){
-                    return bitology.txData[d] //"Year1 Year2, etc depending on the tick value - 0,1,2,3,4"
+                    return bitology.txData[d]
                 });
 
             this.redrawGraph();
@@ -182,9 +180,6 @@
                     .attr("height", bitology.height + margin.top + margin.bottom)
                 .append("g")
                     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-            // create an SVG element inside the #graph div that fills 100% of the div
-            //bitology.graph = d3.select(bitology.id).append("svg:svg").attr("width", "100%").attr("height", "100%");
 
             // X scale will fit values from 0-48 within pixels 0-100
             bitology.x = d3.scale.linear().domain([0, 48]).range([-5, bitology.width]); // starting point is -5 so the first value doesn't show and slides off the edge as part of the transition
